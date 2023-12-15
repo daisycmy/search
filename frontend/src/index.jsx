@@ -4,9 +4,11 @@ import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import Favourite from "./components/favourite/Favourite";
 import Search from "./components/search/Search";
 import UserLogin from "./components/authentications/UserLogin";
-import AdminLogin from "./components/authentications/AdminLogin";
-import Map from "./components/map/Map";
-const Home = () => <div>Home Component</div>;
+import Table from "./components/table/Table";
+import CityHall from "./components/CityHall/CityHall";
+import Event from "./components/event/Event";
+
+const Home = () => <div>Welcome to Location App</div>;
 const NoMatch = () => <div>404 Components not found</div>;
 
 class App extends React.Component {
@@ -38,7 +40,7 @@ class App extends React.Component {
                   </Link>
                 </li>
                 <li>
-                <Link to="/table" style={{ fontSize: "20px" }}>
+                  <Link to="/table" style={{ fontSize: "20px" }}>
                     Table of All Contents
                   </Link>
                 </li>
@@ -53,7 +55,7 @@ class App extends React.Component {
                   </Link>
                 </li>
                 <li>
-                <Link to="/map" style={{ fontSize: "20px" }}>
+                  <Link to="/map" style={{ fontSize: "20px" }}>
                     Map
                   </Link>
                 </li>
@@ -69,8 +71,8 @@ class App extends React.Component {
             <Route path="/favourite" element={<Favourite />} />
             <Route path="/search" element={<Search />} />
             <Route path="/userlogin" element={<UserLogin />} />
-            <Route path="/adminlogin" element={<AdminLogin />} />
-            <Route path="/map" element={<Map />} />
+            <Route path="/adminlogin" element={<NoMatch />} />
+            <Route path="/map" element={<NoMatch />} />
             <Route path="/table" element={<Table />} />
             <Route path="/event" element={<Event />} />
             <Route path="*" element={<NoMatch />} />

@@ -30,13 +30,50 @@ const app = express();
 const cors = require("cors");
 app.use(cors());
 app.use(express.json());
-
 const moment = require("moment-timezone");
 const hkTimeZone = "Asia/Hong_Kong";
 
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 mongoose.connect("mongodb://127.0.0.1:27017/Project"); // database link here
+
+const rs = require("jsrsasign");
+const rsu = require("jsrsasign-util");
+
+function JWTGenenation() {
+  // Header
+  var oHeader = { alg: "HS256", typ: "JWT" };
+  // Payload
+  var oPayload = {};
+  var tNow = rs.KJUR.jws.IntDate.get("now");
+  // expire after 10 min
+  var tEnd = rs.KJUR.jws.IntDate.get(tNow + 10 * 60);
+  oPayload.nbf = tNow;
+  oPayload.iat = tNow;
+  oPayload.exp = tEnd;
+  // Sign JWT, password=pAS$W0rD
+  var sHeader = JSON.stringify(oHeader);
+  var sPayload = JSON.stringify(oPayload);
+  var sJWT = rs.KJUR.jws.JWS.sign("HS256", sHeader, sPayload, "pAS$W0rD");
+  return sJWT;
+}
+
+function JWTVerification(sJWT) {
+  let tNow = rs.KJUR.jws.IntDate.get("now");
+  let isValid = rs.KJUR.jws.JWS.verifyJWT(sJWT, "pAS$W0rD", {
+    alg: ["HS256"],
+    verifyAt: tNow,
+  });
+  return isValid;
+}
+
+function JWTRenew(sJWT) {
+  if (JWTVerification(sJWT)) {
+    return JWTGenenation();
+  } else {
+    return null;
+  }
+}
 
 const db = mongoose.connection;
 // Upon connection failure
@@ -272,85 +309,9 @@ db.once("open", function () {
 
     */
 
-      // Fetch coordinates of all locations
-  app.get("/coordinates", (req, res) => {
-    Location.find({})
-        .then(locations => {
-            const coordinates = locations.map(location => location.coordinates.coordinates);
-            res.json(coordinates);
-        })
-        .catch(err => {
-            console.log(err);
-            res.status(500).send("Error occurred while fetching locations.");
-        });
-  });
-
-  app.get("/events", async (req, res) => {
-    try {
-        if (req.query.price) {
-            const queryPrice = parseFloat(req.query.price);
-            const events = await Event.find({});
-            const filteredEvents = events.filter(event => {
-              let eventPrice = 0;
-              if (event.price !== "Free Admission") {
-                  eventPrice = parseFloat(event.price.replace('$', ''));
-              }
-              return eventPrice <= queryPrice;
-          });
-            const eventsData = filteredEvents.map(event => ({
-                "eventId": event.eventId,
-                "title": event.title,
-                "price": event.price
-            }));
-            res.setHeader('Content-Type', 'text/plain');
-            res.send(JSON.stringify(eventsData, null, 2));
-        } else {
-            const events = await Event.find({});
-            res.json(events);
-        }
-    } catch (err) {
-        console.log(err);
-        res.status(500).send("An error occurred while fetching events.");
-    }
-  });
-  
-  //get fav
   // Fetch all locations: GET
-  app.get("/fav", (req, res) => {
-    Location.find({})
-      .exec()
-      .then((filteredLocations) => {
-        const locationTableData = filteredLocations.map((location) => ({
-          name: location.name,
-          link: `http://localhost:3000/lo/${location.locId}`,
-          eventCount: 0, // Placeholder for event count, to be updated later
-          locationId: location._id, // Store the location's Object ID for reference
-        }));
-
-        const promises = locationTableData.map((locationData) => {
-          return Event.countDocuments({ loc: locationData.locationId })
-            .then((eventCount) => {
-              locationData.eventCount = eventCount;
-            })
-            .catch((error) => {
-              console.error("Error fetching event count:", error);
-              locationData.eventCount = 0; // Set event count to 0 in case of an error
-            });
-        });
-
-        Promise.all(promises)
-          .then(() => {
-            res.json(locationTableData);
-          })
-          .catch((error) => {
-            console.error("Error fetching event count:", error);
-          });
-      })
-      .catch((error) => {
-        console.error("Error handling search:", error);
-      });
-  });
-  // Fetch all locations: GET
+  /* Client side implementation required: 
+  table of all locations */
   app.get("/lo", (req, res) => {
     Location.find()
       .then((locations) => {
@@ -458,6 +419,9 @@ db.once("open", function () {
   });
 
   // Fetch events for a specific location
+  // Response: Generate a HTML table for testing purpose only!
+  /* Client side implementation required: 
+  a table showing event details on top of /lo/:locationID */
   app.get("/lo/:locationID", (req, res) => {
     const locationID = req.params["locationID"];
 
@@ -523,13 +487,151 @@ db.once("open", function () {
           })
           .catch((error) => {
             console.error("Error fetching events:", error);
-            res.status(500).send("Internal Server Error");
           });
       })
       .catch((error) => {
         console.error("Error fetching location:", error);
-        res.status(500).send("Internal Server Error");
       });
+  });
+
+  // Handle submission of user comments
+  /* Client side implementation required: 
+  a comment section on the bottom of /lo/:locationID */
+  app.post("/lo/:locationID/comments", (req, res) => {
+    const locationID = req.params.locationID;
+    const { username, content } = req.body;
+
+    // Find the specified location in the database
+    Location.findOne({ locId: locationID })
+      .then((existingLocation) => {
+        if (!existingLocation) {
+          return res.status(404).send("Location not found");
+        }
+
+        // Find the user by username
+        User.findOne({ username })
+          .then((existingUser) => {
+            if (!existingUser) {
+              return res.status(404).send("User not found");
+            }
+
+            // Create a new comment document
+            const newComment = new Comment({
+              user: existingUser._id,
+              location: existingLocation._id,
+              content,
+              createdAt: new Date(),
+            });
+
+            // Save the comment to the database
+            newComment
+              .save()
+              .then((savedComment) => {
+                res.status(201).json(savedComment);
+              })
+              .catch((error) => {
+                console.error("Error saving comment:", error);
+              });
+          })
+          .catch((error) => {
+            console.error("Error finding user:", error);
+          });
+      })
+      .catch((error) => {
+        console.error("Error finding location:", error);
+      });
+  });
+
+  // Fetch user's favourite locations
+  app.get("/favourite", (req, res) => {
+    const username = "monty_python"; // Testing: Hong Kong City Hall, /lo/87510010, 3
+    // const { username } = req.query;
+
+    User.findOne({ username })
+      .exec()
+      .then((user) => {
+        if (!user) {
+          return res.status(404).send("User not found");
+        }
+
+        return UserAccount.findOne({ user: user._id })
+          .populate("favoriteLocations")
+          .exec();
+      })
+      .then((userAccount) => {
+        if (!userAccount) {
+          return res.status(404).send("User account not found");
+        }
+
+        const favoriteLocations = userAccount.favoriteLocations;
+
+        const locationPromises = favoriteLocations.map((location) => {
+          return Event.countDocuments({ loc: location._id })
+            .exec()
+            .then((eventCount) => {
+              return {
+                name: location.name,
+                link: `localhost:3000/lo/${location.locId}`,
+                eventCount: eventCount,
+              };
+            });
+        });
+
+        return Promise.all(locationPromises);
+      })
+      .then((locationDetails) => {
+        res.json(locationDetails);
+      })
+      .catch((err) => {
+        console.error("Error finding user or user account:", err);
+      });
+  });
+
+  // Fetch coordinates of all locations
+  // Fetch coordinates and links of all locations
+  app.get("/coordinates", (req, res) => {
+    Location.find({})
+      .then((locations) => {
+        const data = locations.map((location) => ({
+          lat: location.coordinates.coordinates[0],
+          lng: location.coordinates.coordinates[1],
+          link: `http://localhost:3000/lo/${location.locId}`,
+        }));
+        res.json(data);
+      })
+      .catch((err) => {
+        console.log(err);
+        res.status(500).send("Error occurred while fetching locations.");
+      });
+  });
+
+  app.get("/events", async (req, res) => {
+    try {
+      if (req.query.price) {
+        const queryPrice = parseFloat(req.query.price);
+        const events = await Event.find({});
+        const filteredEvents = events.filter((event) => {
+          let eventPrice = 0;
+          if (event.price !== "Free Admission") {
+            eventPrice = parseFloat(event.price.replace("$", ""));
+          }
+          return eventPrice <= queryPrice;
+        });
+        const eventsData = filteredEvents.map((event) => ({
+          eventId: event.eventId,
+          title: event.title,
+          price: event.price,
+        }));
+        res.setHeader("Content-Type", "text/plain");
+        res.send(JSON.stringify(eventsData, null, 2));
+      } else {
+        const events = await Event.find({});
+        res.json(events);
+      }
+    } catch (err) {
+      console.log(err);
+      res.status(500).send("An error occurred while fetching events.");
+    }
   });
 
   // handle login requests
@@ -561,6 +663,7 @@ db.once("open", function () {
           .json({
             valid: true,
             isAdmin: data.isAdmin,
+            JWT: JWTGenenation(),
           })
           .send();
       }
@@ -584,6 +687,11 @@ db.once("open", function () {
   }
 */
   app.post("/newEvent", (req, res) => {
+    const sJWT = req.body.sJWT;
+    if (!JWTVerification(sJWT)) {
+      res.status(403).send("JWT expired");
+    }
+
     const title = req.body.title;
     const locId = req.body.locId;
     // the datetime conversion and format are specified by the database schema
@@ -748,7 +856,7 @@ db.once("open", function () {
         isAdmin: boolean
     }
     */
-  app.post("updateUser", (req, res) => {
+  app.post("/updateUser", (req, res) => {
     const oldUsername = req.body.oldUsername;
     const username = req.body.username;
     const password = req.body.password;
@@ -777,7 +885,7 @@ db.once("open", function () {
         username: string,
     }
     */
-  app.post("deleteUSer", (req, res) => {
+  app.post("/deleteUSer", (req, res) => {
     const username = req.body.username;
     User.findOneAndDelete({ username: { $eq: username } }).then((data) => {
       if (data === null) {
@@ -786,6 +894,16 @@ db.once("open", function () {
         res.send("ok");
       }
     });
+  });
+
+  app.post("/renewJWT", (req, res) => {
+    let sJWT = req.body.sJWT;
+    let sNewJWT = JWTRenew(sJWT);
+    if (sNewJWT) {
+      res.json({ sJWT: sNewJWT }).send("ok");
+    } else {
+      res.status(403).send("JWT expired");
+    }
   });
 
   /*app.get('/lo/:locationID', async (req, res) => {

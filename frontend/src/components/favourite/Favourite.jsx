@@ -25,7 +25,7 @@ const Favourite = () => {
 
   const fetchData = async () => {
     try {
-      const response = await fetch("http://localhost:3000/fav");
+      const response = await fetch("http://localhost:3000/favourite");
       const dataGOT = await response.json();
       //ammend
       setSortedData(dataGOT);
