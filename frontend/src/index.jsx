@@ -4,9 +4,9 @@ import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import Favourite from "./components/favourite/Favourite";
 import Search from "./components/search/Search";
 import UserLogin from "./components/authentications/UserLogin";
-import CityHall from "./components/map/CityHall";
+import CityHall from "./components/CityHall/CityHall";
 import Table from "./components/table/Table";
-import Event from "./components/CityHall/Event";
+import Event from "./components/event/Event";
 
 const Home = () => <div>Home Component</div>;
 const NoMatch = () => <div>404 Components not found</div>;

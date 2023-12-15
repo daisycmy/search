@@ -1,5 +1,5 @@
 import React from "react";
-import Event from "./Event.jsx"
+import Event from "./Events.jsx"
 const ListOfEvents = () => {
 
 
