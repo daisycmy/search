@@ -584,6 +584,7 @@ db.once("open", function () {
   }
 */
   app.post("/newEvent", (req, res) => {
+    const maxId = req.body.eventId;
     const title = req.body.title;
     const locId = req.body.locId;
     // the datetime conversion and format are specified by the database schema
@@ -595,15 +596,15 @@ db.once("open", function () {
     const description = req.body.description;
     const presenter = req.body.presenter;
     const price = req.body.price;
-    let maxId;
-    // get current largest id to determine the new id
-    Event.find({})
-      .sort({ eventId: -1 })
-      .limit(1)
-      .then((eventData) => {
-        maxId = eventData[0].eventId + 1;
-        // console.log(maxId)
-      });
+    // let maxId;
+    // // get current largest id to determine the new id
+    // Event.find({})
+    //   .sort({ eventId: -1 })
+    //   .limit(1)
+    //   .then((eventData) => {
+    //     maxId = eventData[0].eventId + 1;
+    //     // console.log(maxId)
+    //   });
     // query location data to get a reference to it
     Location.findOne({ LocId: { $eq: locId } }).then((locationData) => {
       if (locationData === null) {
@@ -748,7 +749,7 @@ db.once("open", function () {
         isAdmin: boolean
     }
     */
-  app.post("updateUser", (req, res) => {
+  app.post("/updateUser", (req, res) => {
     const oldUsername = req.body.oldUsername;
     const username = req.body.username;
     const password = req.body.password;
@@ -777,7 +778,7 @@ db.once("open", function () {
         username: string,
     }
     */
-  app.post("deleteUSer", (req, res) => {
+  app.post("/deleteUSer", (req, res) => {
     const username = req.body.username;
     User.findOneAndDelete({ username: { $eq: username } }).then((data) => {
       if (data === null) {
