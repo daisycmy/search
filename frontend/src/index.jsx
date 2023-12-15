@@ -33,6 +33,16 @@ class App extends React.Component {
                   </Link>
                 </li>
                 <li>
+                  <Link to="/event" style={{ fontSize: "20px" }}>
+                    Show Event
+                  </Link>
+                </li>
+                <li>
+                <Link to="/table" style={{ fontSize: "20px" }}>
+                    Table of All Contents
+                  </Link>
+                </li>
+                <li>
                   <Link to="/userlogin" style={{ fontSize: "20px" }}>
                     UserLogin
                   </Link>
@@ -61,6 +71,8 @@ class App extends React.Component {
             <Route path="/userlogin" element={<UserLogin />} />
             <Route path="/adminlogin" element={<AdminLogin />} />
             <Route path="/map" element={<Map />} />
+            <Route path="/table" element={<Table />} />
+            <Route path="/event" element={<Event />} />
             <Route path="*" element={<NoMatch />} />
           </Routes>
         </BrowserRouter>
