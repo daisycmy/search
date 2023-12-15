@@ -5,6 +5,9 @@ import Favourite from "./components/favourite/Favourite";
 import Search from "./components/search/Search";
 import UserLogin from "./components/authentications/UserLogin";
 import CityHall from "./components/map/CityHall";
+import Table from "./components/table/Table";
+import Event from "./components/CityHall/Event";
+
 const Home = () => <div>Home Component</div>;
 const NoMatch = () => <div>404 Components not found</div>;
 
